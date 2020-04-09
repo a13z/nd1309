@@ -41,11 +41,12 @@ class Block {
             // Save in auxiliary variable the current block hash
             selfhash = self.hash;                                
             // Recalculate the hash of the Block
+            self.hash = null;
             blockhash = SHA256(JSON.stringify(self)).toString();
             // Comparing if the hashes changed
-            if (selfhash =! blockhash){
+            if (selfhash != blockhash){
             // Returning the Block is not valid
-                reject(self);
+                reject(new Error('Block not valid'));
             // Returning the Block is valid
                 resolve(self);
             }
@@ -73,10 +74,10 @@ class Block {
             console.log('getBdata: ' + JSON.stringify(data));
 
             // Resolve with the data if the object isn't the Genesis block
-            if (data != 'Genesis Block') {
+            if (self.height !== 0) {
                 resolve(data);
             } else {
-                reject();
+                reject(new Error('Genesis block'));
             }
         });
 

@@ -136,7 +136,8 @@ class Blockchain {
                 resolve(newBlock);
             }
             else {
-                reject(console.log('Time expired!'));
+                console.log('Time expired!')
+                reject();
             }
         });
     }
