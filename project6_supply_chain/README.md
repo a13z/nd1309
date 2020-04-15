@@ -29,11 +29,3 @@ v1.2.1
 
 ## Diagrams
 The required diagrams are in the diagrams folder.
-
-### Activity Diagram
-
-### Sequence Diagram
-
-### State Diagram
-
-### Class Diagram
