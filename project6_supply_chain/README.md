@@ -28,4 +28,14 @@ v1.2.1
 
 
 ## Diagrams
-The required diagrams are in the diagrams folder.
+### Activity Diagram
+![Image description](https://github.com/dramagods/nd1309/blob/master/project6_supply_chain/diagrams/Supply%20Chain%20Activity%20Diagram.png)
+
+### Sequence Diagram
+![Image description](https://github.com/dramagods/nd1309/blob/master/project6_supply_chain/diagrams/Supply%20Chain%20Sequence%20Diagram.png)
+
+### Stage Diagram
+![Image description](https://github.com/dramagods/nd1309/blob/master/project6_supply_chain/diagrams/Supply%20Change%20State%20Diagram.png)
+
+### Class Diagram
+![Image description](https://github.com/dramagods/nd1309/blob/master/project6_supply_chain/diagrams/Supply%20Chain%20Data%20Model%20Class%20Diagram.png)
