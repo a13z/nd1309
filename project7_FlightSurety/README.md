@@ -71,7 +71,7 @@ To register an airline"
 ## Screenshots and logs
 
 There is a folder in this repository with some screenshots and log with smart contract events showing how it works
-[Image description](https://github.com/dramagods/nd1309/project7_FlightSurety/screenshots_logs)
+[Folder](https://github.com/dramagods/nd1309/tree/master/project7_FlightSurety/screenshots_logs)
 
 ## Resources
 
