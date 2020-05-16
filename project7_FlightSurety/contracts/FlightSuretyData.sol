@@ -59,6 +59,7 @@ contract FlightSuretyData {
 
 
     event AirlineSentFunds(address airline, uint256 amount, uint256 totalsent);
+    event AirlineAdded(address airline);
     event AirlineRegistered(address airline);
     event AirlineFunded(address airline);
 
@@ -201,8 +202,50 @@ contract FlightSuretyData {
      *      Can only be called from FlightSuretyApp contract
      *
      */
+    function addAirline(
+                                address _newAirline
+                        )
+        external
+        requireIsOperational()
+        requireAuthorizedCaller()
+        returns (bool, uint256)
+        {
+            Airline memory newAirline = Airline({airlineAddress: _newAirline, isRegistered: false, isFunded: false, amountFunded: 0});
+            airlines[_newAirline] = newAirline;
+            numAirlines = numAirlines.add(1);
+            emit AirlineAdded(_newAirline);
+
+            return (true, numAirlines);
+        }
+
+    /**
+     * @dev Register an airline
+     *      Can only be called from FlightSuretyApp contract
+     *
+     */
     function registerAirline(
-                                address _registrantAirline,     
+                                address _airline
+                            )
+        external
+        requireIsOperational()
+        requireAuthorizedCaller()
+        returns (bool, uint256)
+        {
+            airlines[_airline].isRegistered = true;
+            numRegisteredAirlines = numRegisteredAirlines.add(1);
+            emit AirlineRegistered(_airline);
+
+            return (true, numRegisteredAirlines);
+
+        }
+
+    /**
+     * @dev vote for an airline.  Returns (true or false, number of votes for an airline)
+     *      Can only be called from FlightSuretyApp contract
+     *
+     */
+    function voteForAirline(
+                                address _registrantAirline,
                                 address _newAirline
                             )
         external
@@ -210,46 +253,39 @@ contract FlightSuretyData {
         requireAuthorizedCaller()
         returns (bool, uint256)
         {
-            // fail fast condition. 
-            require(airlines[_registrantAirline].isFunded, "Airline must be funded to add or vote for an Airline");
+            voters[_newAirline].push(_registrantAirline);
+            return (true, voters[_newAirline].length);
 
-            // with fewer than four registered airlines, an existing funded airline can add
-            // the new airline
-            if (numRegisteredAirlines < MULTI_PARTY_CONSENSUS_MIN) {
-                require(!airlines[_newAirline].isRegistered, "Airline is already registered");
+        }
 
-                Airline memory newAirline = Airline({airlineAddress: _newAirline, isRegistered: true, isFunded: false, amountFunded: 0});
-                airlines[_newAirline] = newAirline;
-                numAirlines = numAirlines.add(1);
-                numRegisteredAirlines = numRegisteredAirlines.add(1);
-                emit AirlineRegistered(_newAirline);
-                return (true, 0);
-            }
-        
-            // Multi party consensus
-            // Only airlines backed up majority can be registered
-            if (airlines[_newAirline].airlineAddress != _newAirline ) {
-                Airline memory newAirline = Airline({airlineAddress: _newAirline, isRegistered: false, isFunded: false, amountFunded:0});
-                airlines[_newAirline] = newAirline;
-                numAirlines = numAirlines.add(1);
-                voters[_newAirline].push(_registrantAirline);
-            }
-            else {
-                require(!hasVoted(_registrantAirline, _newAirline), "Registant airline has already voted for this airline");
-                voters[_newAirline].push(_registrantAirline);
-            }
+   /**
+     * @dev vote for an airline.  Returns (true or false, number of votes for an airline)
+     *      Can only be called from FlightSuretyApp contract
+     *
+     */
+    // function airlineIsRegisteredByConsensus(
+    //                             address _newAirline
+    //                           )
+    //     external
+    //     requireIsOperational()
+    //     requireAuthorizedCaller()
+    //     returns (bool, uint8)
+    //     {
+    //         airlines[_newAirline].isRegistered = true;
+    //         numRegisteredAirlines = numRegisteredAirlines.add(1);
+    //         delete voters[_newAirline];
+    //         emit AirlineRegistered(_newAirline);
 
-            uint256 totalVotes = numVotes(_newAirline);
-            // Multi party consensus voting approval to register a new airline
-            if (numFundedAirlines.div(2) <= totalVotes) {
-                airlines[_newAirline].isRegistered = true;
-                numRegisteredAirlines = numRegisteredAirlines.add(1);
-                delete voters[_newAirline];
-                emit AirlineRegistered(_newAirline);
-                return (true, 0);
-            }
+    //     }
 
-            return (false, totalVotes);
+    /**
+     * @dev Is the airline added?  Returns (true or false)
+     *      Can only be called from FlightSuretyApp contract
+     *
+     */
+    function isAirlineAdded(address _airline) external view requireAuthorizedCaller() returns (bool)
+        {
+            return (airlines[_airline].airlineAddress == _airline);
         }
 
     /**
@@ -271,39 +307,57 @@ contract FlightSuretyData {
         {
             return (airlines[_airline].isFunded);
         }
+    /**
+     * @dev Is the airline funded?  Returns (true or false, number of funded airlines)
+     *      Can only be called from FlightSuretyApp contract
+     *
+     */
+    function amountFunded(address _airline) external view requireAuthorizedCaller() returns (uint256)
+        {
+            return (airlines[_airline].amountFunded);
+        }
         
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights
      *      resulting in insurance payouts, the contract should be self-sustaining
-     *
+     *      returns the amount the airline has funded
      */
     function fund(address _airline, uint256 _amount) external payable
         requireIsOperational()
         requireAuthorizedCaller()
         requireRegisteredAirline(_airline)
-        returns (bool)
+        returns (uint256)
         {
-            require(_amount > 0, "Amount must be higher than 0.");
-
             airlines[_airline].amountFunded = airlines[_airline].amountFunded.add(_amount);
             totalFunds = totalFunds.add(_amount);
             emit AirlineSentFunds(_airline, _amount, airlines[_airline].amountFunded);
-            if (airlines[_airline].amountFunded >= 10 ether) {
-                airlines[_airline].isFunded = true;
-                numFundedAirlines = numFundedAirlines.add(1);
-                emit AirlineFunded(_airline);
-            }
 
-            return airlines[_airline].isFunded;
+            return airlines[_airline].amountFunded;
         }
-
+    /**
+     * @dev Change Airline status to funded
+     *      resulting in insurance payouts, the contract should be self-sustaining
+     *
+     */
+    
+    function airlineFunded(address _airline) external 
+        requireIsOperational()
+        requireAuthorizedCaller()
+        requireRegisteredAirline(_airline)
+        {
+            airlines[_airline].isFunded = true;
+            numFundedAirlines = numFundedAirlines.add(1);
+            emit AirlineFunded(_airline);
+        }
     /**
      *  @dev Payout to eligible passengers with insurance
      */
     function creditInsurees(
                             address _airline, 
                             string calldata _flight, 
-                            uint256 _timestamp)
+                            uint256 _timestamp,
+                            uint8 _insuranceRateMul,
+                            uint8 _insuranceRateDiv)
             external
             requireIsOperational()
             requireAuthorizedCaller()
@@ -316,7 +370,7 @@ contract FlightSuretyData {
             for (uint index = 0; index < passengersTemp.length; index++) {
                 bytes32 flightInsuranceKey = getFlightInsuranceKey(passengersTemp[index], flightKey);
                 if (insurance[flightInsuranceKey] > 0) {
-                    uint refund = insurance[flightInsuranceKey].mul(3).div(2);
+                    uint refund = insurance[flightInsuranceKey].mul(_insuranceRateMul).div(_insuranceRateDiv);
                     // It could be we run out of funds
                     require(totalFunds > 0, "There are not enough funds in the pot");
                     totalFunds = totalFunds.sub(refund);

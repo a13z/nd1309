@@ -17,6 +17,12 @@ contract FlightSuretyApp {
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
+    // Num Airlines to start Multi party consensus
+    uint8 private constant MULTI_PARTY_CONSENSUS_MIN = 4;
+    uint8 private constant INSURANCE_RATE_MUL = 3;
+    uint8 private constant INSURANCE_RATE_DIV = 2;
+
+    uint256 private constant AIRLINE_REGISTRATION_FEE = 10000000000000000000;
 
     // Flight status codees
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
@@ -101,16 +107,44 @@ contract FlightSuretyApp {
     * @dev Add an airline to the registration queue
     *
     */   
-    function registerAirline
-                            (   
+    function registerAirline(
                                 address _newAirline
                             )
-                            public
-                            returns(bool success, uint256 votes)
-    {
+        external
+        requireIsOperational()
+        returns (bool, uint256)
+        {
+            // fail fast condition. 
+            require(isAirlineFunded(msg.sender), "Airline must be funded to add or vote for an Airline");
+
+            // with fewer than four registered airlines, an existing funded airline can add
+            // the new airline
+            if (numRegisteredAirlines() < MULTI_PARTY_CONSENSUS_MIN) {
+                require(!isAirlineRegistered(_newAirline), "Airline is already registered");
+                flightSuretyDataContract.addAirline(_newAirline);
+                return flightSuretyDataContract.registerAirline(_newAirline);
+            }
         
-        return flightSuretyDataContract.registerAirline(msg.sender, _newAirline);
-    }
+            // Multi party consensus
+            // Only airlines backed up majority can be registered
+            if (isAirlineAdded(_newAirline)) {
+                require(!hasVoted(_newAirline), "Registrant airline has already voted for this airline");
+                flightSuretyDataContract.voteForAirline(msg.sender, _newAirline);
+            }
+            else {
+                flightSuretyDataContract.addAirline(_newAirline);
+                flightSuretyDataContract.voteForAirline(msg.sender, _newAirline);
+            }
+
+            uint256 totalVotes = numVotes(_newAirline);
+            // Multi party consensus voting approval to register a new airline
+            if (numFundedAirlines().div(2) <= totalVotes) {
+                flightSuretyDataContract.registerAirline(_newAirline);
+                return (true, 0);
+            }
+
+            return (false, totalVotes);
+        }
 
     /**
      * @dev Fund an airline
@@ -118,10 +152,18 @@ contract FlightSuretyApp {
      */
     function fund() public payable returns (bool)
     {
-        bool funded = flightSuretyDataContract.fund(msg.sender, msg.value);
+        require(msg.value > 0, "Amount sent must be higher than 0.");
+
+        // add funds
+        uint256 amountFunded = flightSuretyDataContract.fund(msg.sender, msg.value);
         address(flightSuretyDataContract).transfer(msg.value);
 
-        return funded;
+        if (amountFunded >= AIRLINE_REGISTRATION_FEE) {
+            flightSuretyDataContract.airlineFunded(msg.sender);
+            return true;
+        }
+        return false;
+
     }
 
     /**
@@ -130,7 +172,13 @@ contract FlightSuretyApp {
     function creditInsurees(address _airline, string memory _flight, uint256 _timestamp)
         public
         {
-            flightSuretyDataContract.creditInsurees(_airline, _flight, _timestamp);
+            // Ratio is calculated using multiplication factor and div factor
+            // to get 1.5x we need to multiply by 3 and divide by 2
+            // we could get any other fraction changing these values.
+            uint8 insuranceRateMul = INSURANCE_RATE_MUL;
+            uint8 insuranceRateDiv = INSURANCE_RATE_DIV;
+
+            flightSuretyDataContract.creditInsurees(_airline, _flight, _timestamp, insuranceRateMul, insuranceRateDiv);
         }
 
     function hasVoted(address _airline) public view returns (bool)
@@ -158,6 +206,11 @@ contract FlightSuretyApp {
         return flightSuretyDataContract.numFundedAirlines();
     }
 
+    function isAirlineAdded(address _airline) public view returns (bool)
+    {
+        return flightSuretyDataContract.isAirlineAdded(_airline);
+    }
+
     function isAirlineRegistered(address _airline) public view returns (bool)
     {
         return flightSuretyDataContract.isAirlineRegistered(_airline);
@@ -171,6 +224,11 @@ contract FlightSuretyApp {
     function isAirline(address _airline) public view returns (bool)
     {
         return (isAirlineRegistered(_airline) && isAirlineFunded(_airline));
+    }
+
+    function amountFunded(address _airline) public view returns (uint256)
+    {
+        return flightSuretyDataContract.amountFunded(_airline);
     }
 
     /********************************************************************************************/
