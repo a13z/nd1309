@@ -1,0 +1,23 @@
+{
+  "name": "capstone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "lite-server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Alfonso Gonzalez <alfonsog@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "lite-server": "2.4.0",
+    "truffle-hdwallet-provider": "^1.0.17",
+    "web3": "^1.2.1"
+  },
+  "dependencies": {
+    "openzeppelin-solidity": "^2.2.0",
+    "solc": "^0.5.16",
+    "truffle-flattener": "^1.4.4"
+  }
+}
