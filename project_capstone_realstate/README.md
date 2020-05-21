@@ -49,7 +49,7 @@ The project and smart contracts are deployed to Rinkeby and these are the detail
 Verifier address:
 ```
    > contract address:    0xd7c062397A401A353FFB77934F510142C19018B9
-   https://rinkeby.etherscan.io/token/0xd7c062397A401A353FFB77934F510142C19018B9
+   https://rinkeby.etherscan.io/address/0xd7c062397A401A353FFB77934F510142C19018B9
 ```
 
 SolnSquareVerifier address:
